@@ -1,21 +1,38 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { General, GeneralSchema } from './Schemas/general.schema';
+const { Client } = require('@elastic/elasticsearch');
 
 @Injectable()
 export class MaquinasService {
-  constructor(@InjectModel(General.name) private readonly generalModel: Model<General>) {}
+  constructor() {}
 
-  async create(data): Promise<General> {
+  async create(data) {
+    console.log('inserindo');
     var obj = {date: new Date(), data: data};
-    const createdDoc = new this.generalModel(obj);
-    console.log(createdDoc);
-    return createdDoc.save();
+    const elasticSearchUrl = process.env.ELASTICSEARCH_HOST;
+    const client = new Client({ node: `http://${elasticSearchUrl}:9200` });
+    const index : string = process.env.ELASTIC_INDEX;
+    const response = client.index({
+      index,
+      body: obj
+    });
+    console.log(response);
+    return response;
   }
 
-  async findAll(): Promise<General[]> {
-    return this.generalModel.find().exec();
+  async findAll() {
+    console.log('consultando');
+    const elasticSearchUrl = process.env.ELASTICSEARCH_HOST;
+    const client = new Client({ node: `http://${elasticSearchUrl}:9200` });
+    const index : string = process.env.ELASTIC_INDEX;
+    return  client.search({
+      index,
+      body: {
+        size: 200,
+        query: {
+          match_all: {}
+        }
+      },
+    });
   }
 }
 
